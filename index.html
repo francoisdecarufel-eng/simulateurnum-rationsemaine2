@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulateur Base 10 - La Rentrée Mathématique</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #fdfbf7;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+            overflow: hidden; /* Empêche le scroll de toute la page */
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        .chalk-text {
+            font-family: 'Caveat', cursive;
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .chalkboard {
+            background-color: #1e3f20;
+            border: 6px solid #8b5a2b;
+            border-radius: 6px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+        }
+        
+        .wood-board {
+            background-color: #deb887;
+            background-image: repeating-linear-gradient(to right, #d2a66b, #d2a66b 10px, #deb887 10px, #deb887 20px);
+            border: 4px solid #8b5a2b;
+            border-radius: 8px;
+        }
+
+        .tab-btn {
+            transition: all 0.2s ease;
+        }
+        .tab-btn.active {
+            background-color: #1e3f20;
+            color: white;
+            border-bottom: 4px solid #fde047;
+            transform: translateY(2px);
+        }
+        
+        /* Animations des blocs */
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .block-anim {
+            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            cursor: pointer;
+            transition: filter 0.1s;
+        }
+        .block-anim:hover {
+            filter: brightness(1.2);
+        }
+        
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-anim {
+            animation: slideDown 0.3s ease-out forwards;
+        }
+
+        /* Scrollbar spécifique pour l'intérieur des colonnes */
+        .column-scroll {
+            overflow-y: auto;
+            min-height: 0; /* Crucial pour le flexbox scrolling */
+        }
+        .column-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .column-scroll::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+            border-radius: 4px;
+        }
+        .column-scroll::-webkit-scrollbar-thumb {
+            background: #a8a29e;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- SVGs Proportionnels (Base 10) ---
+        // Les tailles sont contrôlées par Tailwind via w- / h-
+        const BlockUnit = () => (
+            <svg viewBox="0 0 10 10" className="w-4 h-4 filter drop-shadow-sm">
+                <rect x="0" y="0" width="10" height="10" fill="#facc15" stroke="#ca8a04" strokeWidth="1" rx="1" />
+                <path d="M1 1 L9 1 L9 3 L1 3 Z" fill="rgba(255,255,255,0.4)" />
+            </svg>
+        );
+
+        const BlockTen = () => (
+            <svg viewBox="0 0 10 100" className="w-4 h-24 filter drop-shadow-sm">
+                <rect x="0" y="0" width="10" height="100" fill="#4ade80" stroke="#16a34a" strokeWidth="1" rx="1" />
+                <path d="M1 1 L9 1 L9 3 L1 3 Z" fill="rgba(255,255,255,0.4)" />
+                {Array.from({ length: 9 }).map((_, i) => (
+                    <line key={i} x1="0" y1={(i + 1) * 10} x2="10" y2={(i + 1) * 10} stroke="#16a34a" strokeWidth="1" />
+                ))}
+            </svg>
+        );
+
+        const BlockHundred = () => (
+            <svg viewBox="0 0 100 100" className="w-20 h-20 filter drop-shadow-md">
+                <rect x="0" y="0" width="100" height="100" fill="#60a5fa" stroke="#2563eb" strokeWidth="1" rx="2" />
+                <path d="M1 1 L99 1 L99 3 L1 3 Z" fill="rgba(255,255,255,0.4)" />
+                {Array.from({ length: 9 }).map((_, i) => (
+                    <g key={i}>
+                        <line x1={(i + 1) * 10} y1="0" x2={(i + 1) * 10} y2="100" stroke="#2563eb" strokeWidth="0.5" />
+                        <line x1="0" y1={(i + 1) * 10} x2="100" y2={(i + 1) * 10} stroke="#2563eb" strokeWidth="0.5" />
+                    </g>
+                ))}
+            </svg>
+        );
+
+        const BlockThousand = () => (
+            <svg viewBox="0 0 120 120" className="w-24 h-24 filter drop-shadow-lg">
+                <path d="M100 20 L120 0 L120 100 L100 120 Z" fill="#b91c1c" stroke="#7f1d1d" strokeWidth="1" />
+                <path d="M0 20 L20 0 L120 0 L100 20 Z" fill="#f87171" stroke="#7f1d1d" strokeWidth="1" />
+                <rect x="0" y="20" width="100" height="100" fill="#ef4444" stroke="#7f1d1d" strokeWidth="1" />
+                <text x="50" y="80" fill="white" fontSize="24" fontWeight="bold" textAnchor="middle" opacity="0.6">1000</text>
+            </svg>
+        );
+
+        // --- Application Principale ---
+        const App = () => {
+            const [tab, setTab] = useState('defi'); // 'defi', 'banquier', 'labo'
+            const [targetNumber, setTargetNumber] = useState(0);
+            const [blocks, setBlocks] = useState({ M: 0, C: 0, D: 0, U: 0 });
+            const [status, setStatus] = useState('idle');
+            const [feedback, setFeedback] = useState('');
+            const [activeModal, setActiveModal] = useState(null);
+
+            // Générateurs de niveaux
+            const initDefi = () => {
+                const num = Math.floor(Math.random() * 3999) + 100; // 100 à 4099 pour éviter trop de M
+                setTargetNumber(num);
+                setBlocks({ M: 0, C: 0, D: 0, U: 0 });
+                setStatus('idle');
+                setFeedback('Place les blocs pour construire le nombre.');
+            };
+
+            const initBanquier = () => {
+                const num = Math.floor(Math.random() * 800) + 111;
+                setTargetNumber(num);
+                
+                // On part du nombre exact pour éviter les nombres négatifs
+                let C = Math.floor(num / 100);
+                let D = Math.floor((num % 100) / 10);
+                let U = num % 10;
+                
+                // On crée du désordre en "éclatant" de manière logique
+                // On éclate 1 ou 2 centaines en dizaines (s'il y en a)
+                if (C >= 1) {
+                    const toBreakC = Math.min(C, Math.floor(Math.random() * 2) + 1);
+                    C -= toBreakC;
+                    D += toBreakC * 10;
+                }
+                
+                // On éclate 1, 2 ou 3 dizaines en unités (s'il y en a)
+                if (D >= 1) {
+                    const toBreakD = Math.min(D, Math.floor(Math.random() * 3) + 1);
+                    D -= toBreakD;
+                    U += toBreakD * 10;
+                }
+                
+                setBlocks({ M: 0, C, D, U });
+                setStatus('idle');
+                setFeedback('Le tableau est en désordre ! Utilise "Grouper" ou "Éclater" pour retrouver le bon ordre.');
+            };
+
+            const initLabo = () => {
+                setTargetNumber(0);
+                setBlocks({ M: 1, C: 0, D: 0, U: 0 }); // On commence avec 1 millier
+                setStatus('idle');
+                setFeedback('Mode Libre : Amuse-toi à ajouter, casser ou grouper des blocs !');
+            };
+
+            // Changement d'onglet
+            useEffect(() => {
+                if (tab === 'defi') initDefi();
+                if (tab === 'banquier') initBanquier();
+                if (tab === 'labo') initLabo();
+            }, [tab]);
+
+            // Actions sur les blocs
+            const addBlock = (type) => {
+                setBlocks(prev => ({ ...prev, [type]: prev[type] + 1 }));
+                setStatus('idle');
+            };
+
+            const removeBlock = (type) => {
+                if (blocks[type] > 0) {
+                    setBlocks(prev => ({ ...prev, [type]: prev[type] - 1 }));
+                    setStatus('idle');
+                }
+            };
+
+            const groupBlocks = (fromType, toType) => {
+                if (blocks[fromType] >= 10) {
+                    setBlocks(prev => ({
+                        ...prev,
+                        [fromType]: prev[fromType] - 10,
+                        [toType]: prev[toType] + 1
+                    }));
+                }
+            };
+
+            const breakBlock = (fromType, toType) => {
+                if (blocks[fromType] >= 1) {
+                    setBlocks(prev => ({
+                        ...prev,
+                        [fromType]: prev[fromType] - 1,
+                        [toType]: prev[toType] + 10
+                    }));
+                }
+            };
+
+            const calculateTotal = () => (blocks.M * 1000) + (blocks.C * 100) + (blocks.D * 10) + blocks.U;
+
+            const validateAnswer = () => {
+                const total = calculateTotal();
+                const isOptimal = blocks.U < 10 && blocks.D < 10 && blocks.C < 10;
+
+                if (tab === 'labo') {
+                    setFeedback(`Ton total actuel est de ${total}. C'est très bien !`);
+                    setStatus('success');
+                    return;
+                }
+
+                if (total === targetNumber) {
+                    if (isOptimal) {
+                        setStatus('success');
+                        setFeedback("🎉 Bravo ! C'est parfaitement rangé et correct !");
+                    } else {
+                        setStatus('warning');
+                        setFeedback("✅ Le total est bon, mais regarde bien... tu peux encore grouper par 10 !");
+                    }
+                } else if (total > targetNumber) {
+                    setStatus('error');
+                    setFeedback(`Trop grand ! Ton total est ${total}.`);
+                } else {
+                    setStatus('error');
+                    setFeedback(`Il en manque ! Ton total est ${total}.`);
+                }
+            };
+
+            const showAnswer = () => {
+                if (tab === 'labo') return;
+                const M = Math.floor(targetNumber / 1000);
+                const C = Math.floor((targetNumber % 1000) / 100);
+                const D = Math.floor((targetNumber % 100) / 10);
+                const U = targetNumber % 10;
+                setBlocks({ M, C, D, U });
+                setStatus('success');
+                setFeedback("Voici la réponse exacte bien rangée !");
+            };
+
+            const Modal = ({ title, content, onClose }) => (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl p-6 max-w-xl w-full shadow-2xl modal-anim border-4 border-amber-500 relative">
+                        <button onClick={onClose} className="absolute top-2 right-4 text-gray-400 hover:text-red-500 font-bold text-2xl">✕</button>
+                        <h2 className="text-2xl font-bold mb-4 text-amber-700">{title}</h2>
+                        <div className="text-gray-700 space-y-3">{content}</div>
+                        <button onClick={onClose} className="mt-6 w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded-lg">Compris</button>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="h-screen w-screen flex flex-col bg-gray-100 overflow-hidden text-gray-800">
+                    
+                    {/* BARRE DE NAVIGATION (ONGLETS) - h-14 */}
+                    <header className="h-14 bg-white shadow-md flex items-center justify-between px-4 shrink-0 z-10">
+                        <div className="flex items-center gap-2 font-bold text-xl text-green-800">
+                            🏫 Base 10
+                        </div>
+                        <div className="flex h-full gap-2 pt-2">
+                            <button onClick={() => setTab('defi')} className={`tab-btn px-4 py-2 font-bold rounded-t-lg ${tab === 'defi' ? 'active' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>
+                                🎯 1. Défi
+                            </button>
+                            <button onClick={() => setTab('banquier')} className={`tab-btn px-4 py-2 font-bold rounded-t-lg ${tab === 'banquier' ? 'active' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>
+                                🏦 2. Banquier
+                            </button>
+                            <button onClick={() => setTab('labo')} className={`tab-btn px-4 py-2 font-bold rounded-t-lg ${tab === 'labo' ? 'active' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>
+                                🔬 3. Laboratoire
+                            </button>
+                        </div>
+                        <div>
+                            <button onClick={() => setActiveModal('guide')} className="bg-gray-700 hover:bg-gray-800 text-white text-sm font-bold py-1 px-3 rounded-full">
+                                👩‍🏫 Guide Enseignant
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* EN-TÊTE / CONSIGNES - h-24 */}
+                    <div className="h-24 p-2 shrink-0 bg-gray-200 border-b flex justify-center">
+                        <div className="chalkboard w-full max-w-4xl flex items-center justify-between px-6">
+                            <div className="chalk-text text-xl flex-1">
+                                {tab === 'defi' && "Place le matériel pour fabriquer le nombre :"}
+                                {tab === 'banquier' && "Le banquier a tout dérangé ! Fais des groupes de 10 pour trouver :"}
+                                {tab === 'labo' && "Construis, groupe ou éclate les blocs comme tu le souhaites !"}
+                            </div>
+                            {tab !== 'labo' && (
+                                <div className="chalk-text text-5xl font-bold text-yellow-300 ml-4 tracking-wider">
+                                    {targetNumber}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ESPACE DE TRAVAIL PRINCIPAL - flex-1 (Le reste de l'écran) */}
+                    <main className="flex-1 min-h-0 flex p-3 gap-3">
+                        
+                        {/* COLONNE GAUCHE: RÉSERVE */}
+                        <div className="w-32 xl:w-40 bg-white rounded-lg shadow-inner border-2 border-gray-300 p-2 flex flex-col shrink-0">
+                            <div className="text-center font-bold text-gray-500 border-b pb-1 mb-2 text-sm">Réserve</div>
+                            <div className="flex-1 flex flex-col justify-around gap-2">
+                                <button onClick={() => addBlock('M')} className="flex flex-col items-center p-1 bg-red-50 hover:bg-red-100 rounded border border-red-200">
+                                    <div className="transform scale-50"><BlockThousand /></div>
+                                    <span className="text-xs font-bold text-red-700 mt-[-10px]">Millier</span>
+                                </button>
+                                <button onClick={() => addBlock('C')} className="flex flex-col items-center p-1 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200">
+                                    <div className="transform scale-75"><BlockHundred /></div>
+                                    <span className="text-xs font-bold text-blue-700">Centaine</span>
+                                </button>
+                                <button onClick={() => addBlock('D')} className="flex flex-col items-center p-1 bg-green-50 hover:bg-green-100 rounded border border-green-200 h-20 justify-center">
+                                    <BlockTen />
+                                    <span className="text-xs font-bold text-green-700 mt-1">Dizaine</span>
+                                </button>
+                                <button onClick={() => addBlock('U')} className="flex flex-col items-center p-1 bg-yellow-50 hover:bg-yellow-100 rounded border border-yellow-200 h-16 justify-center">
+                                    <BlockUnit />
+                                    <span className="text-xs font-bold text-yellow-700 mt-1">Unité</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* COLONNE DROITE: TABLEAU (Wood board) */}
+                        <div className="wood-board flex-1 p-2 flex flex-col min-w-0 shadow-lg">
+                            <div className="bg-white/95 flex-1 rounded flex min-h-0 overflow-hidden relative border border-amber-900">
+                                
+                                {/* Colonne Milliers */}
+                                <div className="flex-1 flex flex-col border-r-2 border-gray-200">
+                                    <div className="bg-red-100 py-1 text-center border-b">
+                                        <h3 className="font-bold text-red-800">Milliers (M)</h3>
+                                        <div className="text-xl font-black text-red-600">{blocks.M}</div>
+                                        {/* Actions d'échange */}
+                                        <div className="flex justify-center h-6 mt-1">
+                                            {(tab === 'labo' || tab === 'banquier') && blocks.M >= 1 && (
+                                                <button onClick={() => breakBlock('M', 'C')} className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded shadow">⬇️ Éclater 1 en 10C</button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 column-scroll p-2 flex flex-wrap content-start justify-center gap-2">
+                                        {Array.from({ length: blocks.M }).map((_, i) => (
+                                            <div key={`M-${i}`} onClick={() => removeBlock('M')} className="block-anim relative group">
+                                                <BlockThousand />
+                                                <div className="absolute inset-0 bg-red-500 opacity-0 group-hover:opacity-20 rounded-lg transition-opacity"></div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Colonne Centaines */}
+                                <div className="flex-1 flex flex-col border-r-2 border-gray-200">
+                                    <div className="bg-blue-100 py-1 text-center border-b">
+                                        <h3 className="font-bold text-blue-800">Centaines (c)</h3>
+                                        <div className="text-xl font-black text-blue-600">{blocks.C}</div>
+                                        <div className="flex justify-center gap-1 h-6 mt-1">
+                                            {blocks.C >= 10 && (
+                                                <button onClick={() => groupBlocks('C', 'M')} className="bg-blue-500 hover:bg-blue-600 text-white text-[10px] px-1 py-0.5 rounded shadow">⬆️ Grouper 10</button>
+                                            )}
+                                            {(tab === 'labo' || tab === 'banquier') && blocks.C >= 1 && (
+                                                <button onClick={() => breakBlock('C', 'D')} className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1 py-0.5 rounded shadow">⬇️ Éclater 1</button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 column-scroll p-2 flex flex-wrap content-start justify-center gap-2">
+                                        {Array.from({ length: blocks.C }).map((_, i) => (
+                                            <div key={`C-${i}`} onClick={() => removeBlock('C')} className="block-anim relative group">
+                                                <BlockHundred />
+                                                <div className="absolute inset-0 bg-blue-500 opacity-0 group-hover:opacity-20 rounded transition-opacity"></div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Colonne Dizaines */}
+                                <div className="flex-1 flex flex-col border-r-2 border-gray-200">
+                                    <div className="bg-green-100 py-1 text-center border-b">
+                                        <h3 className="font-bold text-green-800">Dizaines (d)</h3>
+                                        <div className="text-xl font-black text-green-600">{blocks.D}</div>
+                                        <div className="flex justify-center gap-1 h-6 mt-1">
+                                            {blocks.D >= 10 && (
+                                                <button onClick={() => groupBlocks('D', 'C')} className="bg-green-500 hover:bg-green-600 text-white text-[10px] px-1 py-0.5 rounded shadow">⬆️ Grouper 10</button>
+                                            )}
+                                            {(tab === 'labo' || tab === 'banquier') && blocks.D >= 1 && (
+                                                <button onClick={() => breakBlock('D', 'U')} className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] px-1 py-0.5 rounded shadow">⬇️ Éclater 1</button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 column-scroll p-2 flex flex-wrap content-start justify-center gap-x-2 gap-y-1">
+                                        {Array.from({ length: blocks.D }).map((_, i) => (
+                                            <div key={`D-${i}`} onClick={() => removeBlock('D')} className="block-anim">
+                                                <BlockTen />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Colonne Unités */}
+                                <div className="flex-1 flex flex-col">
+                                    <div className="bg-yellow-100 py-1 text-center border-b">
+                                        <h3 className="font-bold text-yellow-800">Unités (u)</h3>
+                                        <div className="text-xl font-black text-yellow-600">{blocks.U}</div>
+                                        <div className="flex justify-center gap-1 h-6 mt-1">
+                                            {blocks.U >= 10 && (
+                                                <button onClick={() => groupBlocks('U', 'D')} className="bg-yellow-500 hover:bg-yellow-600 text-white text-[10px] px-1 py-0.5 rounded shadow">⬆️ Grouper 10</button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 column-scroll p-3 flex flex-wrap content-start justify-center gap-1">
+                                        {Array.from({ length: blocks.U }).map((_, i) => (
+                                            <div key={`U-${i}`} onClick={() => removeBlock('U')} className="block-anim">
+                                                <BlockUnit />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </main>
+
+                    {/* ZONE DE BOUTONS ET FEEDBACK - h-24 */}
+                    <footer className="h-24 bg-white border-t border-gray-300 shrink-0 p-3 flex flex-col justify-center items-center relative z-10 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+                        
+                        <div className={`absolute -top-10 left-1/2 transform -translate-x-1/2 px-6 py-1 rounded-t-lg shadow-md text-sm font-bold transition-all
+                            ${status === 'success' ? 'bg-green-500 text-white' : 
+                              status === 'warning' ? 'bg-yellow-400 text-yellow-900' : 
+                              status === 'error' ? 'bg-red-500 text-white' : 'bg-gray-700 text-white'}`}>
+                            {feedback}
+                        </div>
+
+                        <div className="flex gap-4 w-full justify-center max-w-4xl mt-2">
+                            <button onClick={validateAnswer} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded shadow border-b-4 border-emerald-800 active:translate-y-1 active:border-b-0">
+                                ✔️ Valider
+                            </button>
+                            
+                            {tab !== 'labo' && (
+                                <button onClick={showAnswer} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded shadow">
+                                    💡 Réponse
+                                </button>
+                            )}
+                            
+                            <button onClick={() => setActiveModal('explication')} className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded shadow">
+                                🧠 Explications
+                            </button>
+                            
+                            <button onClick={() => { if(tab==='defi') initDefi(); if(tab==='banquier') initBanquier(); if(tab==='labo') initLabo(); }} className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded shadow ml-4">
+                                🔄 Recommencer
+                            </button>
+                        </div>
+                    </footer>
+
+                    {/* MODALES */}
+                    {activeModal === 'guide' && (
+                        <Modal title="📚 Guide Enseignant" onClose={() => setActiveModal(null)} content={
+                            <ul className="list-disc pl-5 space-y-2">
+                                <li><strong>Onglet 1 (Défi) :</strong> L'élève lit un nombre et le construit. Développe la correspondance symbole-quantité.</li>
+                                <li><strong>Onglet 2 (Banquier) :</strong> L'élève fait face à un tableau mal organisé (ex: 24 unités). Il doit cliquer sur "Grouper 10" pour transférer vers la colonne supérieure. Consolide le principe d'échange (10U = 1D).</li>
+                                <li><strong>Onglet 3 (Laboratoire) :</strong> Jeu libre. L'élève peut ajouter des blocs et surtout utiliser le bouton "Éclater 1" pour décomposer (ex: 1C devient 10D). Aide à comprendre la soustraction avec retenue.</li>
+                            </ul>
+                        } />
+                    )}
+
+                    {activeModal === 'explication' && (
+                        <Modal title="🧠 Valeur de position" onClose={() => setActiveModal(null)} content={
+                            <div className="bg-gray-100 p-4 rounded font-mono text-lg space-y-2">
+                                <div className="flex justify-between text-red-700"><span>{blocks.M} Millier(s) × 1000</span><span>= {blocks.M * 1000}</span></div>
+                                <div className="flex justify-between text-blue-700"><span>{blocks.C} Centaine(s) × 100</span><span>= {blocks.C * 100}</span></div>
+                                <div className="flex justify-between text-green-700"><span>{blocks.D} Dizaine(s) × 10</span><span>= {blocks.D * 10}</span></div>
+                                <div className="flex justify-between text-yellow-700 border-b-2 border-gray-300 pb-2"><span>{blocks.U} Unité(s) × 1</span><span>= {blocks.U}</span></div>
+                                <div className="flex justify-between font-bold pt-2"><span>Total actuel :</span><span>= {calculateTotal()}</span></div>
+                            </div>
+                        } />
+                    )}
+
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
