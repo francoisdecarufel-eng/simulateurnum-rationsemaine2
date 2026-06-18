@@ -11,6 +11,14 @@
     
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- CORRECTION BABEL : Configuration propre du preset React Classic -->
+    <script>
+      Babel.registerPreset('react-classic', {
+        presets: [
+          [Babel.availablePresets['react'], { runtime: 'classic' }]
+        ]
+      });
+    </script>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -19,6 +27,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
         body {
@@ -43,14 +54,28 @@
             background-color: #1e3f20;
             border: 6px solid #8b5a2b;
             border-radius: 6px;
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5), 4px 4px 10px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .chalkboard::after {
+            content: '';
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 40px;
+            height: 15px;
+            background: #e2e8f0;
+            border-radius: 2px;
+            opacity: 0.8;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
         }
         
         .wood-board {
             background-color: #deb887;
-            background-image: repeating-linear-gradient(to right, #d2a66b, #d2a66b 10px, #deb887 10px, #deb887 20px);
-            border: 4px solid #8b5a2b;
+            background-image: repeating-linear-gradient(to right, rgba(210, 166, 107, 0.4), rgba(210, 166, 107, 0.4) 10px, transparent 10px, transparent 20px);
+            border: 8px solid #8b5a2b;
             border-radius: 8px;
+            box-shadow: 4px 4px 15px rgba(0,0,0,0.2);
         }
 
         .tab-btn {
@@ -62,6 +87,9 @@
             border-bottom: 4px solid #fde047;
             transform: translateY(2px);
         }
+        .tab-btn:not(.active):hover {
+            background-color: #e2e8f0;
+        }
         
         /* Animations des blocs */
         @keyframes popIn {
@@ -72,10 +100,11 @@
         .block-anim {
             animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
             cursor: pointer;
-            transition: filter 0.1s;
+            transition: filter 0.1s, transform 0.1s;
         }
         .block-anim:hover {
-            filter: brightness(1.2);
+            filter: brightness(1.1);
+            transform: scale(1.05);
         }
         
         @keyframes slideDown {
@@ -92,35 +121,44 @@
             min-height: 0; /* Crucial pour le flexbox scrolling */
         }
         .column-scroll::-webkit-scrollbar {
-            width: 6px;
+            width: 8px;
         }
         .column-scroll::-webkit-scrollbar-track {
-            background: rgba(0,0,0,0.05);
+            background: rgba(0,0,0,0.1);
             border-radius: 4px;
         }
         .column-scroll::-webkit-scrollbar-thumb {
-            background: #a8a29e;
+            background: rgba(139, 90, 43, 0.6);
             border-radius: 4px;
+        }
+        .column-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(139, 90, 43, 0.8);
+        }
+
+        .col-divider {
+            border-right: 2px dashed rgba(139, 90, 43, 0.5);
+        }
+        .col-divider:last-child {
+            border-right: none;
         }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <script type="text/babel">
+    <script type="text/babel" data-presets="react-classic">
         const { useState, useEffect } = React;
 
         // --- SVGs Proportionnels (Base 10) ---
-        // Les tailles sont contrôlées par Tailwind via w- / h-
         const BlockUnit = () => (
-            <svg viewBox="0 0 10 10" className="w-4 h-4 filter drop-shadow-sm">
+            <svg viewBox="0 0 10 10" className="w-5 h-5 m-0.5 filter drop-shadow-sm block-anim">
                 <rect x="0" y="0" width="10" height="10" fill="#facc15" stroke="#ca8a04" strokeWidth="1" rx="1" />
                 <path d="M1 1 L9 1 L9 3 L1 3 Z" fill="rgba(255,255,255,0.4)" />
             </svg>
         );
 
         const BlockTen = () => (
-            <svg viewBox="0 0 10 100" className="w-4 h-24 filter drop-shadow-sm">
+            <svg viewBox="0 0 10 100" className="w-5 h-32 m-1 filter drop-shadow-sm block-anim">
                 <rect x="0" y="0" width="10" height="100" fill="#4ade80" stroke="#16a34a" strokeWidth="1" rx="1" />
                 <path d="M1 1 L9 1 L9 3 L1 3 Z" fill="rgba(255,255,255,0.4)" />
                 {Array.from({ length: 9 }).map((_, i) => (
@@ -130,7 +168,7 @@
         );
 
         const BlockHundred = () => (
-            <svg viewBox="0 0 100 100" className="w-20 h-20 filter drop-shadow-md">
+            <svg viewBox="0 0 100 100" className="w-24 h-24 m-1 filter drop-shadow-md block-anim">
                 <rect x="0" y="0" width="100" height="100" fill="#60a5fa" stroke="#2563eb" strokeWidth="1" rx="2" />
                 <path d="M1 1 L99 1 L99 3 L1 3 Z" fill="rgba(255,255,255,0.4)" />
                 {Array.from({ length: 9 }).map((_, i) => (
@@ -143,7 +181,7 @@
         );
 
         const BlockThousand = () => (
-            <svg viewBox="0 0 120 120" className="w-24 h-24 filter drop-shadow-lg">
+            <svg viewBox="0 0 120 120" className="w-28 h-28 m-1 filter drop-shadow-lg block-anim">
                 <path d="M100 20 L120 0 L120 100 L100 120 Z" fill="#b91c1c" stroke="#7f1d1d" strokeWidth="1" />
                 <path d="M0 20 L20 0 L120 0 L100 20 Z" fill="#f87171" stroke="#7f1d1d" strokeWidth="1" />
                 <rect x="0" y="20" width="100" height="100" fill="#ef4444" stroke="#7f1d1d" strokeWidth="1" />
@@ -156,17 +194,17 @@
             const [tab, setTab] = useState('defi'); // 'defi', 'banquier', 'labo'
             const [targetNumber, setTargetNumber] = useState(0);
             const [blocks, setBlocks] = useState({ M: 0, C: 0, D: 0, U: 0 });
-            const [status, setStatus] = useState('idle');
+            const [status, setStatus] = useState('idle'); // idle, success, error, warning
             const [feedback, setFeedback] = useState('');
             const [activeModal, setActiveModal] = useState(null);
 
             // Générateurs de niveaux
             const initDefi = () => {
-                const num = Math.floor(Math.random() * 3999) + 100; // 100 à 4099 pour éviter trop de M
+                const num = Math.floor(Math.random() * 3999) + 100; // 100 à 4099
                 setTargetNumber(num);
                 setBlocks({ M: 0, C: 0, D: 0, U: 0 });
                 setStatus('idle');
-                setFeedback('Place les blocs pour construire le nombre.');
+                setFeedback('Place les blocs pour construire le nombre demandé.');
             };
 
             const initBanquier = () => {
@@ -178,8 +216,7 @@
                 let D = Math.floor((num % 100) / 10);
                 let U = num % 10;
                 
-                // On crée du désordre en "éclatant" de manière logique
-                // On éclate 1 ou 2 centaines en dizaines (s'il y en a)
+                // Éclater des Centaines en Dizaines
                 if (C >= 1) {
                     const toBreakC = Math.min(C, Math.floor(Math.random() * 2) + 1);
                     C -= toBreakC;
@@ -286,12 +323,12 @@
             };
 
             const Modal = ({ title, content, onClose }) => (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl p-6 max-w-xl w-full shadow-2xl modal-anim border-4 border-amber-500 relative">
                         <button onClick={onClose} className="absolute top-2 right-4 text-gray-400 hover:text-red-500 font-bold text-2xl">✕</button>
                         <h2 className="text-2xl font-bold mb-4 text-amber-700">{title}</h2>
                         <div className="text-gray-700 space-y-3">{content}</div>
-                        <button onClick={onClose} className="mt-6 w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded-lg">Compris</button>
+                        <button onClick={onClose} className="mt-6 w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded-lg transition-colors">Compris</button>
                     </div>
                 </div>
             );
@@ -316,7 +353,7 @@
                             </button>
                         </div>
                         <div>
-                            <button onClick={() => setActiveModal('guide')} className="bg-gray-700 hover:bg-gray-800 text-white text-sm font-bold py-1 px-3 rounded-full">
+                            <button onClick={() => setActiveModal('guide')} className="bg-gray-700 hover:bg-gray-800 text-white text-sm font-bold py-1 px-3 rounded-full transition-colors">
                                 👩‍🏫 Guide Enseignant
                             </button>
                         </div>
